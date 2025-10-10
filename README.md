@@ -12,7 +12,7 @@
 
 PromptAssist is a Windows utility that runs in your system tray with two core abilities:
 
--   **Snippet Expansion:** Type a command (like `::email`) to replace it with longer text. Use for code boilerplate, common replies, or text you type often.
+-   **Snippet Expansion:** Type a command (like `::emailstarter`) to replace it with longer text. Use for code boilerplate, common replies, or text you type often.
 -   **LLM Augmentation:** Use the prefix `::Prompt([your-prompt-here)` to transform your prompt with added accuracy and context.
 
 ## Key Features
@@ -32,7 +32,7 @@ PromptAssist is a Windows utility that runs in your system tray with two core ab
 ## How to Use
 
 -   **Double-click** the tray icon to manage snippets
--   **Type a snippet command** (e.g., `::sig`) to expand it
+-   **Type a snippet command** (e.g., `::emailstarter`) to expand it
 -   **Type an LLM command** (e.g., `::Prompt(explain Bayes' Theorem)`) to transform your prompt
 
 ## For Developers: Running from Source
