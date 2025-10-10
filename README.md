@@ -27,13 +27,13 @@ PromptAssist is a Windows utility that runs in your system tray with two core ab
 
 1.  Download `PromptAssist.exe` from the [release page](https://github.com/EricJujianZou/PromptAssist/releases/tag/v1.0.0)
 2.  Run the file
-3.  The icon appears in your system tray
+3.  The icon appears in your system tray (main laptop screen, task bar, the "^" symbol. You won't find it on a monitor).
 
 ## How to Use
 
--   **Double-click** the tray icon to manage snippets
--   **Type a snippet command** (e.g., `::emailstarter`) to expand it
--   **Type an LLM command** (e.g., `::Prompt(explain Bayes' Theorem)`) to transform your prompt
+-   **Double-click** the tray icon to manage snippets. Add, edit, or delete.
+-   **Type a snippet command** in ANY text box (e.g., `::emailstarter`) to get your full text.
+-   **Type an LLM command** in ANY text box (e.g., `::Prompt(explain Bayes' Theorem)`) to transform your prompt.
 
 ## For Developers: Running from Source
 
