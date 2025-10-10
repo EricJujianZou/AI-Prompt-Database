@@ -96,7 +96,6 @@ desktop.ini
 # Secrets and sensitive configuration files
 
 *.env
-.env.*
 secrets.ini
 credentials.json
 config.local.json # Example for local-only overrides
