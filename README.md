@@ -74,6 +74,8 @@ cd PromptAssist
     ```shell
     python -m venv venv
     .\venv\Scripts\activate  # Windows
+    or if that doesn't work:
+    .\venv\bin\activate.ps1
     ```
 
 3.  Install dependencies:
