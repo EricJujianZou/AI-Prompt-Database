@@ -1,165 +1,135 @@
-# PromptAssist 🚀
+# PromptAssist 
 
 **Your Personal AI-Powered Prompt Manager**
+
 [![Quick Demo](https://img.youtube.com/vi/oFcH-L0bwaI/maxresdefault.jpg)](https://youtu.be/oFcH-L0bwaI)
+
 ---
 
-Installation: https://github.com/EricJujianZou/PromptAssist/releases/tag/v1.0.0
+**Installation:** https://github.com/EricJujianZou/PromptAssist/releases/tag/v1.0.0
 
 ## What is PromptAssist?
 
-PromptAssist is a lightweight Windows utility that runs in your system tray and gives you two powerful abilities in any application:
+PromptAssist is a Windows utility that runs in your system tray with two core abilities:
 
--   **⚡ Snippet Expansion:** Type a short command (like `::email`) and have it instantly replaced with a longer piece of text. Perfect for code boilerplate, common replies, or anything you type frequently. Edit, create, and delete text snippets by accessing the UI in your system tray.
--   **🧠 LLM Augmentation:** Use a special prefix (::Prompt([your-prompt-here) to transform your prompt with more accuracy and context.
+-   **Snippet Expansion:** Type a command (like `::email`) to replace it with longer text. Use for code boilerplate, common replies, or text you type often.
+-   **LLM Augmentation:** Use the prefix `::Prompt([your-prompt-here)` to transform your prompt with added accuracy and context.
 
 ## Key Features
 
--   **System-Wide:** Works in your code editor, browser, notepad, and more.
--   **Lightweight:** Runs quietly in the system tray with minimal resource usage.
--   **Customizable:** Easily add, edit, and manage your snippets through a simple dashboard.
--   **Secure:** Connects to your own self-hosted API backend for LLM prompts.
--   **No Installation:** Just download and run the `.exe` file to use my Google Cloud backend.
+-   **System-Wide:** Works in code editors, browsers, and text fields.
+-   **Lightweight:** Runs in system tray with minimal resources.
+-   **Customizable:** Add, edit, and manage snippets through a dashboard.
+-   **Secure:** Connects to self-hosted API backend for LLM prompts.
+-   **No Installation:** Download and run the `.exe` file.
 
-## Getting Started - Use The App
+## Getting Started
 
-1.  Go to the latest [release page](https://github.com/EricJujianZou/PromptAssist/releases/tag/v1.0.0)
-2.  Download the `PromptAssist.exe` file or follow the instructions to clone for yourself.
-3.  Run it! The PromptAssist icon will appear in your system tray.
+1.  Download `PromptAssist.exe` from the [release page](https://github.com/EricJujianZou/PromptAssist/releases/tag/v1.0.0)
+2.  Run the file
+3.  The icon appears in your system tray
 
 ## How to Use
 
--   **Double-click** the tray icon to open the Dashboard and manage your snippets.
--   **Type a snippet command** (e.g., `::sig`) in any text field to expand it.
--   **Type an LLM command** (e.g., `::Prompt(explain Bayes' Theroem to me)`) to transform your prompt to follow prompt engineering practices.
+-   **Double-click** the tray icon to manage snippets
+-   **Type a snippet command** (e.g., `::sig`) to expand it
+-   **Type an LLM command** (e.g., `::Prompt(explain Bayes' Theorem)`) to transform your prompt
 
 ## For Developers: Running from Source
 
-This guide provides step-by-step instructions to set up and run the entire application on your local machine. The project consists of two main parts that run separately:
-
-1.  **The Backend:** A Python server using FastAPI that connects to the language model.
-2.  **The Client:** A Python GUI application using PySide6 that runs in your system tray.
+The project has two parts:
+1.  **Backend:** FastAPI server connecting to the language model
+2.  **Client:** PySide6 GUI running in system tray
 
 ### Prerequisites
 
-Before you begin, ensure you have the following installed on your system:
-
--   [**Python 3.9+**](https://www.python.org/downloads/)
--   [**Git**](https://git-scm.com/downloads/)
--   [**Docker Desktop**](https://www.docker.com/products/docker-desktop/) (for running a local Redis database)
+-   [Python 3.9+](https://www.python.org/downloads/)
+-   [Git](https://git-scm.com/downloads/)
+-   [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 ### Step 1: Clone the Repository
 
-First, get the source code onto your machine. Open your terminal, navigate to where you store your projects, and run:
-
 ```shell
-[git clone https://github.com/](https://github.com/EricJujianZou/PromptAssist.git)
-
+git clone https://github.com/EricJujianZou/PromptAssist.git
+cd PromptAssist
 ```
 
-### Step 2: Set Up the Local Redis Database
+### Step 2: Set Up Redis
 
-The backend uses Redis for rate limiting to prevent abuse and control costs. We will run Redis locally using Docker.
-
-1.  Make sure Docker Desktop is running on your machine.
-2.  In your terminal, run the following command to start a Redis container:
+1.  Start Docker Desktop
+2.  Run Redis container:
 
     ```shell
     docker run -d -p 6379:6379 --name prompt-redis redis
     ```
 
-    This command downloads the official Redis image, starts it as a background process (`-d`), and makes it available on the standard Redis port (`6379`). It will automatically restart whenever you start Docker.
+### Step 3: Set Up the Backend
 
-### Step 3: Set Up the Backend API
-
-Now, let's get the "brain" of the application running.
-
-1.  **Navigate to the backend directory:**
-
+1.  Navigate to backend:
     ```shell
     cd backend_api
     ```
 
-2.  **Create and activate a virtual environment:**
-
+2.  Create and activate virtual environment:
     ```shell
-    # Create the virtual environment folder named 'venv'
     python -m venv venv
-
-    # Activate it (the command is different for Windows vs. macOS/Linux)
-    # On Windows:
-    .\venv\Scripts\activate
-    #using Conda:
-    conda activate venv
+    .\venv\Scripts\activate  # Windows
     ```
-    Your terminal prompt should now change to show `(venv)`, indicating the virtual environment is active.
 
-3.  **Install dependencies:**
-
+3.  Install dependencies:
     ```shell
     pip install -r requirements_backend.txt
     ```
 
-4.  **Configure environment variables:**
-    -   In the `backend_api` folder, create a new file named `.env`.
-    -   Copy the entire contents of `backend_api/.env.example` and paste them into your new `.env` file.
-    -   Fill in the placeholder values in your `.env` file:
-        -   `VERTEX_AI_PROJECT`: Your Google Cloud Project ID.
-        -   `VERTEX_AI_LOCATION`: The region for your Vertex AI resources (e.g., `us-central1`).
-        -   `BACKEND_API_KEY`: **Create a long, random, secret key.** This is like a password that your client will use to talk to this backend.
-        -   `REDIS_URL`: Leave this as `redis://localhost` to connect to the local Docker container you started.
+4.  Configure environment:
+    -   Create `.env` in `backend_api`
+    -   Copy contents from `.env.example`
+    -   Set values:
+        -   `VERTEX_AI_PROJECT`: Your Google Cloud Project ID
+        -   `VERTEX_AI_LOCATION`: Region (e.g., `us-central1`)
+        -   `BACKEND_API_KEY`: Create a random secret key
+        -   `REDIS_URL`: Use `redis://localhost`
 
-5.  **Authenticate with Google Cloud:**
-    For the backend to use your Google account for AI services, you need to log in via the terminal.
+5.  Authenticate with Google Cloud:
     ```shell
     gcloud auth application-default login
     ```
-    This will open a browser window for you to log in to your Google account.
 
-6.  **Run the backend server:**
-
+6.  Run the backend:
     ```shell
     uvicorn main:app --reload
     ```
-    You should see output indicating the server is running on `http://127.0.0.1:8000`. **Leave this terminal running.**
+    Server runs on `http://127.0.0.1:8000`. **Leave this terminal open.**
 
-### Step 4: Set Up the Client GUI
+### Step 4: Set Up the Client
 
-With the backend running, open a **new, separate terminal** to set up the user-facing application.
+1.  Open a new terminal in project root
 
-1.  **Navigate to the project root directory** (the parent of `backend_api`).
-
-2.  **Create and activate a separate virtual environment:**
-
+2.  Create virtual environment:
     ```shell
     python -m venv venv_client
-    # On Windows:
-    .\venv_client\Scripts\activate
+    .\venv_client\Scripts\activate  # Windows
     ```
-    Your new terminal prompt should now show `(venv_client)`.
 
-3.  **Install dependencies:**
-    *(Note: The client's requirements file is in the `documentation` folder).*
-
+3.  Install dependencies:
     ```shell
     pip install -r documentation/requirements.txt
     ```
 
-4.  **Configure environment variables:**
-    -   In the `src` folder, create a new file named `.env`.
-    -   Copy the contents of `src/.env.example` and paste them into your new `src/.env` file.
-    -   Fill in the placeholder values:
-        -   `BACKEND_API_URL`: Set this to `http://127.0.0.1:8000`.
-        -   `BACKEND_API_KEY`: **This is critical.** Paste the exact same secret key you created for the backend's `.env` file in Step 3.
+4.  Configure environment:
+    -   Create `.env` in `src`
+    -   Copy from `src/.env.example`
+    -   Set values:
+        -   `BACKEND_API_URL`: `http://127.0.0.1:8000`
+        -   `BACKEND_API_KEY`: Same key from backend's `.env`
 
-5.  **Run the client application:**
-
+5.  Run the client:
     ```shell
     python run.py
     ```
 
-The application icon should now appear in your system tray. It is fully connected to your local backend, which is connected to your local Redis database. You now have the complete system running for development and testing!
+The icon appears in your system tray, connected to your local backend and Redis.
 
 ## License
 
-This project is licensed under the MIT License. See the `LICENSE` file for details.
+MIT License. See `LICENSE` file.
