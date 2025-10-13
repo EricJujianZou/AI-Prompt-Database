@@ -35,6 +35,7 @@ class SettingsStorage:
         return {
             "theme": "Dark",
             "clear_clipboard_on_paste": False,
+            "is_first_launch": True,  # Flag to track first-time user experience
             "blacklisted_apps": [
                 "powershell.exe",
                 "cmd.exe",

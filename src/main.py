@@ -1,10 +1,13 @@
 import sys
 from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QIcon
 from .core.application import Application 
+from .core.resource_handler import get_path_for_resource
 import logging
 import logging.handlers # For rotating file handler
 import os
 from PySide6.QtCore import QTimer
+import ctypes
 
 
 _persistent_app_instance = None
@@ -67,8 +70,28 @@ def main():
     logger.info("Application starting...")
     logger.debug(f"Logging to console and to file: {LOG_FILE_PATH}")
 
+    # Set Windows AppUserModelID to group taskbar icons properly
+    try:
+        myappid = 'com.promptassist.app.1.0'  # arbitrary string
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        logger.info(f"Windows AppUserModelID set to: {myappid}")
+    except Exception as e:
+        logger.warning(f"Could not set AppUserModelID: {e}")
+
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
+    
+    # Set application-wide icon (appears in taskbar for all windows)
+    try:
+        icon_path = get_path_for_resource('icons/logo.ico')
+        if os.path.exists(icon_path):
+            app_icon = QIcon(icon_path)
+            app.setWindowIcon(app_icon)
+            logger.info(f"Application icon set from {icon_path}")
+        else:
+            logger.warning(f"Application icon not found at {icon_path}")
+    except Exception as e:
+        logger.error(f"Error setting application icon: {e}")
     
     try:
         QTimer.singleShot(0, start_main_application)

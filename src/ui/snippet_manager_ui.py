@@ -2,7 +2,7 @@ from PySide6.QtWidgets import (
     QApplication, QWidget, QListWidget, QTextEdit, QVBoxLayout, 
     QPushButton, QInputDialog, QMessageBox, QHBoxLayout, QStackedWidget, QLabel,
     QFormLayout, QComboBox, QCheckBox, QPlainTextEdit, QTableWidget, QHeaderView,
-    QTableWidgetItem, QAbstractItemView
+    QTableWidgetItem, QAbstractItemView, QDialog, QDialogButtonBox, QMenu
 )
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import Qt, Slot
@@ -13,6 +13,61 @@ from ..storage.settings_storage import SettingsStorage
 from ..storage.history_storage import HistoryStorage
 from .frameless_window import FramelessWindow
 from ..core.resource_handler import get_path_for_resource
+
+
+class HistoryDetailDialog(QDialog):
+    """Dialog to show full history entry details."""
+    
+    def __init__(self, timestamp: str, query: str, result: str, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("History Entry Details")
+        self.resize(700, 500)
+        
+        layout = QVBoxLayout(self)
+        
+        # Timestamp
+        timestamp_label = QLabel(f"<b>Timestamp:</b> {timestamp}")
+        layout.addWidget(timestamp_label)
+        
+        # Query section
+        query_label = QLabel("<b>Original Query:</b>")
+        layout.addWidget(query_label)
+        
+        self.query_text = QPlainTextEdit()
+        self.query_text.setPlainText(query)
+        self.query_text.setReadOnly(True)
+        self.query_text.setMaximumHeight(120)
+        layout.addWidget(self.query_text)
+        
+        # Copy query button
+        copy_query_btn = QPushButton("Copy Query")
+        copy_query_btn.clicked.connect(lambda: self._copy_to_clipboard(query))
+        layout.addWidget(copy_query_btn, alignment=Qt.AlignmentFlag.AlignLeft)
+        
+        # Result section
+        result_label = QLabel("<b>Augmented Prompt:</b>")
+        layout.addWidget(result_label)
+        
+        self.result_text = QPlainTextEdit()
+        self.result_text.setPlainText(result)
+        self.result_text.setReadOnly(True)
+        layout.addWidget(self.result_text)
+        
+        # Copy result button
+        copy_result_btn = QPushButton("Copy Augmented Prompt")
+        copy_result_btn.clicked.connect(lambda: self._copy_to_clipboard(result))
+        layout.addWidget(copy_result_btn, alignment=Qt.AlignmentFlag.AlignLeft)
+        
+        # Dialog buttons
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        button_box.rejected.connect(self.close)
+        layout.addWidget(button_box)
+    
+    def _copy_to_clipboard(self, text: str):
+        """Copy text to clipboard and show confirmation."""
+        QApplication.clipboard().setText(text)
+        QMessageBox.information(self, "Copied", "Text copied to clipboard!")
+
 
 class SnippetUI(QWidget):
     def __init__(self, storage: SnippetStorage, settings: SettingsStorage, history: HistoryStorage, parent=None):
@@ -53,6 +108,9 @@ class SnippetUI(QWidget):
         # Connect navigation list to the stacked widget
         self.nav_list.currentRowChanged.connect(self.pages.setCurrentIndex)
         self.nav_list.currentRowChanged.connect(self._on_page_changed)
+        
+        # Load history immediately on startup (Issue #1 fix)
+        self.refresh_history_table()
 
     def _create_snippet_page(self):
         """Creates the widget for the 'Snippets' page."""
@@ -136,6 +194,32 @@ class SnippetUI(QWidget):
         page = QWidget()
         layout = QVBoxLayout(page)
 
+        # --- Toolbar with action buttons ---
+        toolbar = QHBoxLayout()
+        
+        self.copy_result_btn = QPushButton("Copy Result")
+        self.copy_result_btn.clicked.connect(self._copy_history_result)
+        self.copy_result_btn.setEnabled(False)  # Disabled until row selected
+        toolbar.addWidget(self.copy_result_btn)
+        
+        self.save_snippet_btn = QPushButton("Save as Snippet")
+        self.save_snippet_btn.clicked.connect(self._save_history_as_snippet)
+        self.save_snippet_btn.setEnabled(False)
+        toolbar.addWidget(self.save_snippet_btn)
+        
+        self.delete_entry_btn = QPushButton("Delete Entry")
+        self.delete_entry_btn.clicked.connect(self._delete_history_entry)
+        self.delete_entry_btn.setEnabled(False)
+        toolbar.addWidget(self.delete_entry_btn)
+        
+        toolbar.addStretch()  # Push buttons to the left
+        
+        self.clear_history_button = QPushButton("Clear All History")
+        self.clear_history_button.clicked.connect(self._clear_history)
+        toolbar.addWidget(self.clear_history_button)
+        
+        layout.addLayout(toolbar)
+
         # --- Table for History ---
         self.history_table = QTableWidget()
         self.history_table.setColumnCount(3)
@@ -145,24 +229,31 @@ class SnippetUI(QWidget):
         self.history_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         self.history_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         
-        # Enable context menu
-        self.history_table.setContextMenuPolicy(Qt.ContextMenuPolicy.ActionsContextMenu)
-
-        # --- Context Menu Actions ---
-        copy_action = QAction("Copy Result", self.history_table)
-        copy_action.triggered.connect(self._copy_history_result)
-        self.history_table.addAction(copy_action)
-
-        save_as_snippet_action = QAction("Save as Snippet", self.history_table)
-        save_as_snippet_action.triggered.connect(self._save_history_as_snippet)
-        self.history_table.addAction(save_as_snippet_action)
+        # Issue #2 fix: Better row highlighting
+        self.history_table.setStyleSheet("""
+            QTableWidget::item:selected {
+                background-color: #0078D4;
+                color: white;
+            }
+            QTableWidget::item:hover {
+                background-color: #3A3A3A;
+            }
+        """)
+        
+        # Enable tooltips for truncated text (Issue #3 - hover preview)
+        self.history_table.setMouseTracking(True)
+        
+        # Double-click to open detail dialog (Issue #3)
+        self.history_table.doubleClicked.connect(self._show_history_detail)
+        
+        # Selection changed signal to enable/disable toolbar buttons
+        self.history_table.itemSelectionChanged.connect(self._on_history_selection_changed)
+        
+        # Enable custom context menu (Issue #4 - right-click menu)
+        self.history_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.history_table.customContextMenuRequested.connect(self._show_history_context_menu)
 
         layout.addWidget(self.history_table)
-
-        # --- Clear History Button ---
-        self.clear_history_button = QPushButton("Clear All History")
-        self.clear_history_button.clicked.connect(self._clear_history)
-        layout.addWidget(self.clear_history_button, alignment=Qt.AlignmentFlag.AlignRight)
 
         return page
 
@@ -170,18 +261,37 @@ class SnippetUI(QWidget):
         """Slot to refresh data when a page becomes visible."""
         # Index 2 corresponds to the History page
         if index == 2:
-            self._refresh_history_table()
+            self.refresh_history_table()
 
-    def _refresh_history_table(self):
-        """Reloads all entries from history storage into the table."""
+    def refresh_history_table(self):
+        """
+        Public method to reload all entries from history storage into the table.
+        Can be called externally (e.g., from Application) when new entries are added.
+        """
         self.history_table.setRowCount(0) # Clear table
         history_entries = self.history.get_all()
         self.history_table.setRowCount(len(history_entries))
 
         for row, entry in enumerate(history_entries):
-            self.history_table.setItem(row, 0, QTableWidgetItem(entry.get("timestamp", "")))
-            self.history_table.setItem(row, 1, QTableWidgetItem(entry.get("query", "")))
-            self.history_table.setItem(row, 2, QTableWidgetItem(entry.get("result", "")))
+            timestamp_text = entry.get("timestamp", "")
+            query_text = entry.get("query", "")
+            result_text = entry.get("result", "")
+            
+            # Create table items
+            timestamp_item = QTableWidgetItem(timestamp_text)
+            query_item = QTableWidgetItem(query_text)
+            result_item = QTableWidgetItem(result_text)
+            
+            # Add tooltips for hover preview (first 200 chars)
+            query_preview = query_text[:200] + "..." if len(query_text) > 200 else query_text
+            result_preview = result_text[:200] + "..." if len(result_text) > 200 else result_text
+            
+            query_item.setToolTip(query_preview)
+            result_item.setToolTip(result_preview)
+            
+            self.history_table.setItem(row, 0, timestamp_item)
+            self.history_table.setItem(row, 1, query_item)
+            self.history_table.setItem(row, 2, result_item)
 
     def _copy_history_result(self):
         """Copies the result from the selected history row to the clipboard."""
@@ -209,6 +319,7 @@ class SnippetUI(QWidget):
         command, ok = QInputDialog.getText(self, "New Snippet", "Enter command for the new snippet (e.g. ::mysnippet):")
         if ok and command:
             self.storage.save(command, result_item.text())
+            self._refresh_list()  # Refresh the snippet list UI
             QMessageBox.information(self, "Snippet Saved", f"Saved as new snippet with command: {command}")
 
     def _clear_history(self):
@@ -220,8 +331,88 @@ class SnippetUI(QWidget):
         )
         if confirm == QMessageBox.StandardButton.Yes:
             self.history.clear()
-            self._refresh_history_table()
+            self.refresh_history_table()
             QMessageBox.information(self, "History Cleared", "All history has been deleted.")
+
+    def _delete_history_entry(self):
+        """Deletes the selected history entry."""
+        selected_items = self.history_table.selectedItems()
+        if not selected_items:
+            return
+        
+        row = selected_items[0].row()
+        
+        confirm = QMessageBox.question(
+            self, "Delete Entry",
+            "Are you sure you want to delete this history entry?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+        )
+        
+        if confirm == QMessageBox.StandardButton.Yes:
+            # Get all entries, remove the selected one, and save back
+            history_entries = self.history.get_all()
+            if 0 <= row < len(history_entries):
+                del history_entries[row]
+                # Clear and re-add all entries
+                self.history.clear()
+                for entry in history_entries:
+                    self.history.add_entry(
+                        query=entry.get("query", ""),
+                        result=entry.get("result", "")
+                    )
+                self.refresh_history_table()
+                QMessageBox.information(self, "Entry Deleted", "History entry has been deleted.")
+
+    def _on_history_selection_changed(self):
+        """Enable/disable toolbar buttons based on selection."""
+        has_selection = len(self.history_table.selectedItems()) > 0
+        self.copy_result_btn.setEnabled(has_selection)
+        self.save_snippet_btn.setEnabled(has_selection)
+        self.delete_entry_btn.setEnabled(has_selection)
+
+    def _show_history_context_menu(self, position):
+        """Shows the right-click context menu for history table."""
+        # Only show menu if a row is selected
+        if not self.history_table.selectedItems():
+            return
+        
+        menu = QMenu(self)
+        
+        copy_action = QAction("Copy Result", self)
+        copy_action.triggered.connect(self._copy_history_result)
+        menu.addAction(copy_action)
+        
+        save_action = QAction("Save as Snippet", self)
+        save_action.triggered.connect(self._save_history_as_snippet)
+        menu.addAction(save_action)
+        
+        menu.addSeparator()
+        
+        delete_action = QAction("Delete Entry", self)
+        delete_action.triggered.connect(self._delete_history_entry)
+        menu.addAction(delete_action)
+        
+        # Show menu at cursor position
+        menu.exec(self.history_table.viewport().mapToGlobal(position))
+
+    def _show_history_detail(self, index):
+        """Opens a dialog showing full history entry details on double-click."""
+        row = index.row()
+        
+        timestamp_item = self.history_table.item(row, 0)
+        query_item = self.history_table.item(row, 1)
+        result_item = self.history_table.item(row, 2)
+        
+        if not all([timestamp_item, query_item, result_item]):
+            return
+        
+        dialog = HistoryDetailDialog(
+            timestamp=timestamp_item.text(),
+            query=query_item.text(),
+            result=result_item.text(),
+            parent=self
+        )
+        dialog.exec()
 
     def _refresh_list(self):
         self.snippet_list_widget.clear()

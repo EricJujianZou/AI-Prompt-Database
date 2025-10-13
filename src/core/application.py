@@ -6,10 +6,12 @@ from ..storage.settings_storage import SettingsStorage
 from ..storage.history_storage import HistoryStorage
 from ..ui.snippet_manager_ui import SnippetUI
 from ..ui.frameless_window import FramelessWindow
+from ..ui.welcome_screen import WelcomeScreen
 from .keystroke_listener import KeystrokeListener
 from .focus_tracker import FocusTracker 
 from .snippet_handler import SnippetHandler 
 from .llm_prompt_handler import LLMHandler
+from .toast_notifier import PromptToastNotifier
 from ..keyboard_utils import clipboard_copy, simulate_keystrokes
 from .resource_handler import get_path_for_resource
 import signal
@@ -33,6 +35,7 @@ class Application(QObject):
         self.settings = SettingsStorage()
         self.history = HistoryStorage()
         self.main_window = None # To hold the reference to the UI window
+        self.snippet_ui = None # To hold reference to the SnippetUI for refreshing history
         # self.cached_control = None #implement cache control, which stores reference to the active UI control to reduce UIA overhead - COMMENTED OUT
         #App compatibility, works with most but for some can not detect the input content
         self.is_request_in_flight = False
@@ -44,6 +47,9 @@ class Application(QObject):
         self.blacklisted_apps = self.settings.get("blacklisted_apps", [])
         self.clear_clipboard = bool(self.settings.get("clear_clipboard_on_paste", False))
 
+        # Initialize toast notifier for non-intrusive feedback
+        self.toast_notifier = PromptToastNotifier()
+        
         self.generating_text = "Generating Prompt..."
         """
         TODO - sort out the blacklist if it's even needed
@@ -71,6 +77,40 @@ class Application(QObject):
         signal.signal(signal.SIGINT, self._handle_signal)
         signal.signal(signal.SIGTERM, self._handle_signal)
         logger.info("Signal handlers registered.")
+        
+        # Check if this is the first launch and show welcome screen
+        self._check_first_launch()
+
+    def _check_first_launch(self):
+        """
+        Check if this is the user's first time launching the app.
+        If so, show the welcome screen and then automatically open the dashboard.
+        Only disables the welcome screen if user explicitly checks "Don't show again".
+        """
+        is_first_launch = self.settings.get('is_first_launch', True)
+        
+        if is_first_launch:
+            logger.info("First launch detected. Showing welcome screen.")
+            
+            # Create and show the welcome screen
+            welcome_screen = WelcomeScreen()
+            welcome_screen.dont_show_again.connect(self._on_dont_show_again)
+            
+            # Show welcome screen (blocks until user clicks "Got it!")
+            welcome_screen.exec()
+            
+            # Automatically show the dashboard so users see where to manage snippets
+            self.show_snippet_manager()
+    
+    @Slot(bool)
+    def _on_dont_show_again(self, checked: bool):
+        """
+        Handle the 'Don't show again' checkbox from welcome screen.
+        Only sets the flag to False if user explicitly checked the box.
+        """
+        if checked:
+            logger.info("User selected 'Don't show again'. Setting is_first_launch to False.")
+            self.settings.set('is_first_launch', False)
 
     @Slot()
     def replace_and_clear_buffer(self):
@@ -82,14 +122,22 @@ class Application(QObject):
             logger.debug("Creating or showing main window.")
             
             # 1. Create the content widget first, passing all storage objects
-            dashboard_content = SnippetUI(self.storage, self.settings, self.history)
+            self.snippet_ui = SnippetUI(self.storage, self.settings, self.history)
             
             # 2. Wrap it in our custom frameless window
-            self.main_window = FramelessWindow(dashboard_content)
+            self.main_window = FramelessWindow(self.snippet_ui)
 
-            # 3. Load and apply the stylesheet to the main window
+            # 3. Set the window icon (appears in taskbar)
             try:
-                # Correct path from src/core/ to src/
+                icon_path = get_path_for_resource('icons/logo.ico')
+                if os.path.exists(icon_path):
+                    self.main_window.setWindowIcon(QIcon(icon_path))
+                    logger.debug(f"Window icon set from {icon_path}")
+            except Exception as e:
+                logger.error(f"Error setting window icon: {e}")
+
+            # 4. Load and apply the stylesheet to the main window
+            try:
                 style_path = get_path_for_resource('style.qss')
                 with open(style_path, "r") as f:
                     stylesheet = f.read()
@@ -107,20 +155,23 @@ class Application(QObject):
     @Slot(str, str)
     def on_llm_command(self, original_command: str, user_query: str):
         if self.is_request_in_flight:
-            logger.warning("ignore request because llm command is already in flight")
+            logger.warning("Ignoring request because LLM command is already in flight")
             winsound.PlaySound("SystemHand", winsound.SND_ALIAS | winsound.SND_ASYNC)
             return # Stop processing immediately
         
         self.is_request_in_flight = True
-        logger.info(f"Received llm command: {original_command}")
-        #Type the generating text
-        try:
-            
-            simulate_keystrokes(self.generating_text, len(original_command)+1)
-        except Exception as e:
-            logger.error(f"Error showing the 'generating...' visual feedback: {e}", exc_info = True)
+        logger.info(f"Received LLM command: {original_command}")
         
-        #call the backend, passing the original query for history
+        # Show toast notification with animated ellipsis (non-intrusive)
+        try:
+            self.toast_notifier.show_generating_toast()
+            # Play subtle processing sound
+            winsound.PlaySound("SystemExclamation", winsound.SND_ALIAS | winsound.SND_ASYNC)
+            logger.debug("Showed generating toast and played processing sound")
+        except Exception as e:
+            logger.error(f"Error showing toast/sound feedback: {e}", exc_info=True)
+        
+        # Call the backend, passing the original query for history
         self.llm_handler.get_prompt_from_backend(user_query, original_command)
         
 
@@ -128,43 +179,68 @@ class Application(QObject):
 
     @Slot(str, str)
     def handle_llm_augmented_prompt(self, augmented_prompt: str, original_query: str):
-
+        """
+        Handle successful LLM prompt generation.
+        Copies result to clipboard and shows toast notification.
+        """
         try:
-            backspaces_for_call = len(self.generating_text)
-
             if augmented_prompt:
                 # Add to history
                 self.history.add_entry(query=original_query, result=augmented_prompt)
+                
+                # Refresh history UI if SnippetUI exists
+                if self.snippet_ui is not None:
+                    self.snippet_ui.refresh_history_table()
+                    logger.debug("History UI refreshed after adding new entry")
 
-                logger.info("augmented prompt received. Replacing text")
-                simulate_keystrokes(backspaces=backspaces_for_call)
+                logger.info("Augmented prompt received. Copying to clipboard.")
+                
+                # Copy to clipboard (no text replacement - user decides when to paste)
                 clipboard_copy(augmented_prompt, clear_after=self.clear_clipboard)
+                
+                # Show success toast
+                self.toast_notifier.show_success_toast(
+                    message="✓ Prompt ready! Press Ctrl+V to paste."
+                )
+                
+                # Play success sound
                 try:
                     winsound.PlaySound("SystemAsterisk", winsound.SND_ALIAS | winsound.SND_ASYNC)
-                    logger.debug("played notif sound (winsound)")
+                    logger.debug("Played success sound")
                 except Exception as e_sound:
-                    logger.warning(f"Could not play winsound notif, falling back to bell sound: {e_sound}")
-                    print("\a", flush=True)
-                    logger.debug("Played notif sound (system bell \a).")
-            # This 'else' case is now handled by handle_llm_failure
+                    logger.warning(f"Could not play success sound: {e_sound}")
+                    
         finally:
             self.is_request_in_flight = False
-            logger.info("LLM request flight lock released.")
+            logger.info("LLM request completed successfully.")
             self.keystroke_listener.clear_buffer()
 
     @Slot(str)
     def handle_llm_failure(self, error_message: str):
-        """Handles the visual feedback when a prompt generation fails."""
+        """
+        Handle LLM prompt generation failure.
+        Shows error toast and logs detailed error for debugging.
+        """
         try:
-            logger.warning(f"Failed to get augmented prompt, displaying error: {error_message}")
-            error_display_text = f"[Prompt Failed: {error_message}]"
-            backspaces_for_call = len(self.generating_text)
-            simulate_keystrokes(error_display_text, backspaces_for_call)
+            logger.error(f"LLM prompt generation failed: {error_message}", exc_info=True)
+            
+            # Show user-friendly error toast
+            self.toast_notifier.show_error_toast(
+                message="Prompt generation failed. Please try again or contact support."
+            )
+            
+            # Play error sound
+            try:
+                winsound.PlaySound("SystemHand", winsound.SND_ALIAS | winsound.SND_ASYNC)
+                logger.debug("Played error sound")
+            except Exception as e_sound:
+                logger.warning(f"Could not play error sound: {e_sound}")
+                
         except Exception as e:
-            logger.error(f"Error displaying failure message: {e}", exc_info=True)
+            logger.error(f"Error displaying failure notification: {e}", exc_info=True)
         finally:
             self.is_request_in_flight = False
-            logger.info("LLM request flight lock released after failure.")
+            logger.info("LLM request completed with failure.")
             self.keystroke_listener.clear_buffer()
 
     @Slot(QSystemTrayIcon.ActivationReason)
@@ -182,27 +258,16 @@ class Application(QObject):
         
         # Set icon
         try:
-
-            try:
-                # Check if running in a bundle and log the bundle directory
-                bundle_dir = sys._MEIPASS
-                logging.info(f"RUNNING IN BUNDLE. MEIPASS is: {bundle_dir}")
-            except AttributeError:
-                # Log the directory if running as a normal script
-                bundle_dir = os.path.abspath(".")
-                logging.info(f"RUNNING AS SCRIPT. Base path is: {bundle_dir}")
-
-            icon_path = get_path_for_resource('logo.ico')
-            logging.info(f"Attempting to load icon from generated path: {icon_path}")
-
+            icon_path = get_path_for_resource('icons/logo.ico')
+            logger.info(f"Attempting to load icon from: {icon_path}")
 
             # Log whether the file actually exists at that path
             if os.path.exists(icon_path):
-                logging.info("SUCCESS: Icon file was found at the specified path.")
+                logger.info("SUCCESS: Icon file was found at the specified path.")
                 self.tray_icon.setIcon(QIcon(icon_path))
                 
             else:
-                logging.error("FAILURE: Icon file was NOT FOUND at the specified path.")
+                logger.error("FAILURE: Icon file was NOT FOUND at the specified path.")
                 std_icon = QApplication.style().standardIcon(QStyle.StandardPixmap.SP_ComputerIcon)
                 self.tray_icon.setIcon(std_icon)
 
@@ -232,8 +297,16 @@ class Application(QObject):
         logger.info("System tray icon is now visible.")
 
     def quit_application(self):
-        """Quits the application."""
+        """Quits the application and cleans up resources."""
         logger.info("Quit action triggered. Shutting down.")
+        
+        # Clean up toast notifier
+        try:
+            self.toast_notifier.cleanup()
+            logger.debug("Toast notifier cleaned up")
+        except Exception as e:
+            logger.error(f"Error cleaning up toast notifier: {e}")
+        
         QApplication.quit()
 
     def _handle_signal(self, signum, frame):
