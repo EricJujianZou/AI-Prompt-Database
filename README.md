@@ -1,11 +1,5 @@
 # PromptAssist
 
-**Your Personal AI-Powered Prompt Manager**
-
-[![Quick Demo](https://img.youtube.com/vi/oFcH-L0bwaI/maxresdefault.jpg)](https://youtu.be/oFcH-L0bwaI)
-
----
-
 **Installation:** https://github.com/EricJujianZou/PromptAssist/releases/tag/v1.0.0
 
 ## What is PromptAssist?
@@ -16,6 +10,25 @@ PromptAssist is a Windows utility that runs in your system tray with two core ab
 
 - **Snippet Expansion:** Type a command (like `::emailstarter`) and press **SPACE right after** to replace it with longer text. Use for code boilerplate, common replies, or text you type often.
 - **LLM Augmentation:** For example, type `::Prompt(your-prompt-here)` and press **SPACE right after** in ChatGPT to transform your prompt with added accuracy and context.
+
+## How to Use
+
+### Snippets
+
+- **Double-click** the tray icon to open the dashboard and manage snippets.
+- **Type a snippet command** in ANY text box (e.g., `::emailstarter`) and press `Space` to expand it.
+
+### LLM Prompt Augmentation
+
+- Type ::Prompt(your-prompt-here) + space at the end to augment the prompt.
+- You will here a sound indicating the prompt is being augmented, and another once it's done.
+- Press `Ctrl+V` to paste the result, or look in your clipboard history by `WINDOWS key + v`
+
+Quick 30-second video demo: 
+
+[![Quick Demo](https://img.youtube.com/vi/oFcH-L0bwaI/maxresdefault.jpg)](https://youtu.be/oFcH-L0bwaI)
+
+---
 
 ## Key Features
 
@@ -31,19 +44,6 @@ PromptAssist is a Windows utility that runs in your system tray with two core ab
 1.  Download `PromptAssist.exe` from the [release page](https://github.com/EricJujianZou/PromptAssist/releases/tag/v1.0.0)
 2.  Run the file
 3.  The icon appears in your system tray (main laptop screen, task bar, the "^" symbol. You won't find it on a monitor).
-
-## How to Use
-
-### Snippets
-
-- **Double-click** the tray icon to open the dashboard and manage snippets.
-- **Type a snippet command** in ANY text box (e.g., `::emailstarter`) and press `Space` to expand it.
-
-### LLM Prompt Augmentation
-
-- Type ::Prompt(your-prompt-here) + space at the end to augment the prompt.
-- You will here a sound indicating the prompt is being augmented, and another once it's done.
-- Press `Ctrl+V` to paste the result, or look in your clipboard history by `WINDOWS key + v`
 
 ### History Tab
 
