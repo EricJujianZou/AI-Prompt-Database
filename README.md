@@ -1,4 +1,4 @@
-# PromptAssist 
+# PromptAssist
 
 **Your Personal AI-Powered Prompt Manager**
 
@@ -12,16 +12,17 @@
 
 PromptAssist is a Windows utility that runs in your system tray with two core abilities:
 
--   **Snippet Expansion:** Type a command (like `::emailstarter`) to replace it with longer text. Use for code boilerplate, common replies, or text you type often.
--   **LLM Augmentation:** Use the prefix `::Prompt([your-prompt-here)` to transform your prompt with added accuracy and context.
+- **Snippet Expansion:** Type a command (like `::emailstarter`) to replace it with longer text. Use for code boilerplate, common replies, or text you type often.
+- **LLM Augmentation:** Use the prefix `::Prompt([your-prompt-here)` to transform your prompt with added accuracy and context.
 
 ## Key Features
 
--   **System-Wide:** Works in code editors, browsers, and text fields.
--   **Lightweight:** Runs in system tray with minimal resources.
--   **Customizable:** Add, edit, and manage snippets through a dashboard.
--   **Secure:** Connects to self-hosted API backend for LLM prompts.
--   **No Installation:** Download and run the `.exe` file.
+- **System-Wide:** Works in code editors, browsers, and text fields.
+- **Lightweight:** Runs in system tray with minimal resources.
+- **Customizable:** Add, edit, and manage snippets through a dashboard.
+- **History Tracking:** View all your past LLM-augmented prompts with full details.
+- **Secure:** Connects to self-hosted API backend for LLM prompts.
+- **No Installation:** Download and run the `.exe` file.
 
 ## Getting Started
 
@@ -31,21 +32,39 @@ PromptAssist is a Windows utility that runs in your system tray with two core ab
 
 ## How to Use
 
--   **Double-click** the tray icon to manage snippets. Add, edit, or delete.
--   **Type a snippet command** in ANY text box (e.g., `::emailstarter`) to get your full text.
--   **Type an LLM command** in ANY text box (e.g., `::Prompt(explain Bayes' Theorem)`) to transform your prompt.
+### Snippets
+
+- **Double-click** the tray icon to open the dashboard and manage snippets.
+- **Type a snippet command** in ANY text box (e.g., `::emailstarter`) and press `Ctrl+Space` to expand it.
+
+### LLM Prompt Augmentation
+
+- Type ::Prompt(your-prompt-here) + space at the end to augment the prompt.
+- You will here a sound indicating the prompt is being augmented, and another once it's done.
+- Press `Ctrl+V` to paste the result, or look in your clipboard history by `WINDOWS key + v`
+
+### History Tab
+
+The History tab in the dashboard lets you:
+
+- **View all past prompts:** See every query you've sent and the augmented results, sorted by date.
+- **Double-click entries:** Open a detailed view with full text and copy buttons.
+- **Right-click actions:** Copy results, save as snippets, or delete individual entries.
+- **Toolbar buttons:** Quick access to copy, save as snippet, and delete actions.
+- **Hover tooltips:** Preview truncated text before opening the full view.
 
 ## For Developers: Running from Source
 
 The project has two parts:
+
 1.  **Backend:** FastAPI server connecting to the language model
 2.  **Client:** PySide6 GUI running in system tray
 
 ### Prerequisites
 
--   [Python 3.9+](https://www.python.org/downloads/)
--   [Git](https://git-scm.com/downloads/)
--   [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+- [Python 3.9+](https://www.python.org/downloads/)
+- [Git](https://git-scm.com/downloads/)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
 ### Step 1: Clone the Repository
 
@@ -66,11 +85,13 @@ cd PromptAssist
 ### Step 3: Set Up the Backend
 
 1.  Navigate to backend:
+
     ```shell
     cd backend_api
     ```
 
 2.  Create and activate virtual environment:
+
     ```shell
     python -m venv venv
     .\venv\Scripts\activate  # Windows
@@ -79,20 +100,23 @@ cd PromptAssist
     ```
 
 3.  Install dependencies:
+
     ```shell
     pip install -r requirements_backend.txt
     ```
 
 4.  Configure environment:
-    -   Create `.env` in `backend_api`
-    -   Copy contents from `.env.example`
-    -   Set values:
-        -   `VERTEX_AI_PROJECT`: Your Google Cloud Project ID
-        -   `VERTEX_AI_LOCATION`: Region (e.g., `us-central1`)
-        -   `BACKEND_API_KEY`: Create a random secret key
-        -   `REDIS_URL`: Use `redis://localhost`
+
+    - Create `.env` in `backend_api`
+    - Copy contents from `.env.example`
+    - Set values:
+      - `VERTEX_AI_PROJECT`: Your Google Cloud Project ID
+      - `VERTEX_AI_LOCATION`: Region (e.g., `us-central1`)
+      - `BACKEND_API_KEY`: Create a random secret key
+      - `REDIS_URL`: Use `redis://localhost`
 
 5.  Authenticate with Google Cloud:
+
     ```shell
     gcloud auth application-default login
     ```
@@ -108,22 +132,25 @@ cd PromptAssist
 1.  Open a new terminal in project root
 
 2.  Create virtual environment:
+
     ```shell
     python -m venv venv_client
     .\venv_client\Scripts\activate  # Windows
     ```
 
 3.  Install dependencies:
+
     ```shell
     pip install -r documentation/requirements.txt
     ```
 
 4.  Configure environment:
-    -   Create `.env` in `src`
-    -   Copy from `src/.env.example`
-    -   Set values:
-        -   `BACKEND_API_URL`: `http://127.0.0.1:8000`
-        -   `BACKEND_API_KEY`: Same key from backend's `.env`
+
+    - Create `.env` in `src`
+    - Copy from `src/.env.example`
+    - Set values:
+      - `BACKEND_API_URL`: `http://127.0.0.1:8000`
+      - `BACKEND_API_KEY`: Same key from backend's `.env`
 
 5.  Run the client:
     ```shell
